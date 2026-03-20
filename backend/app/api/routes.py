@@ -234,6 +234,58 @@ def delete_shift(shift_id:int, current_user=Depends(get_current_user), session: 
     session.delete(shift); session.commit()
     return {"message":"Turno eliminato"}
 
+def _save_station(session, user_id: int, shift_date, station_code, manager):
+    """Save or update workstation entry for a user on a given date."""
+    if not station_code:
+        return
+    from app.models.entities import WorkStationDefinition
+    station_def = session.exec(
+        select(WorkStationDefinition).where(
+            WorkStationDefinition.code == station_code.upper(),
+            WorkStationDefinition.company_name == manager.company_name,
+            WorkStationDefinition.team_name == manager.team_name,
+        )
+    ).first()
+    label = station_def.label if station_def else None
+    existing_ws = session.exec(
+        select(WorkStationEntry).where(WorkStationEntry.user_id == user_id, WorkStationEntry.assigned_date == shift_date)
+    ).first()
+    if existing_ws:
+        existing_ws.station_code = station_code.upper()
+        existing_ws.station_label = label
+        session.add(existing_ws)
+    else:
+        session.add(WorkStationEntry(user_id=user_id, assigned_date=shift_date, station_code=station_code.upper(), station_label=label, validity="daily"))
+    session.commit()
+
+
+@router.patch("/shifts/{shift_id}/station")
+def update_shift_station(shift_id: int, station_code: str, manager=Depends(require_manager), session: Session=Depends(get_session)):
+    """Update/set the workstation for a specific shift entry."""
+    shift = session.exec(select(ShiftEntry).where(ShiftEntry.id == shift_id)).first()
+    if not shift: raise HTTPException(status_code=404, detail="Turno non trovato")
+    from app.models.entities import WorkStationDefinition
+    station_def = session.exec(
+        select(WorkStationDefinition).where(
+            WorkStationDefinition.code == station_code.upper(),
+            WorkStationDefinition.company_name == manager.company_name,
+            WorkStationDefinition.team_name == manager.team_name,
+        )
+    ).first()
+    label = station_def.label if station_def else None
+    existing_ws = session.exec(
+        select(WorkStationEntry).where(WorkStationEntry.user_id == shift.user_id, WorkStationEntry.assigned_date == shift.shift_date)
+    ).first()
+    if existing_ws:
+        existing_ws.station_code = station_code.upper()
+        existing_ws.station_label = label
+        session.add(existing_ws)
+    else:
+        session.add(WorkStationEntry(user_id=shift.user_id, assigned_date=shift.shift_date, station_code=station_code.upper(), station_label=label, validity="daily"))
+    session.commit()
+    return {"message": "Postazione aggiornata", "station_code": station_code.upper(), "station_label": label}
+
+
 @router.post("/shifts/manual", response_model=ShiftEntryRead)
 def create_manual_shift(payload: ManualShiftEntry, manager=Depends(require_manager), session: Session=Depends(get_session)):
     target=session.exec(select(User).where(User.id==payload.user_id)).first()
@@ -250,9 +302,11 @@ def create_manual_shift(payload: ManualShiftEntry, manager=Depends(require_manag
         existing.time_start=payload.time_start; existing.time_end=payload.time_end
         existing.hours_worked=hw; existing.overtime_hours=ot; existing.notes=payload.notes; existing.manually_edited=True
         existing.updated_at=datetime.utcnow(); session.add(existing); session.commit(); session.refresh(existing)
+        _save_station(session, payload.user_id, payload.shift_date, payload.station_code, manager)
         return ShiftEntryRead.model_validate(existing)
     entry=ShiftEntry(user_id=payload.user_id, shift_date=payload.shift_date, shift_code=payload.shift_code.upper(), shift_label=payload.shift_label, time_start=payload.time_start, time_end=payload.time_end, hours_worked=hw, overtime_hours=ot, notes=payload.notes, manually_edited=True)
     session.add(entry); session.commit(); session.refresh(entry)
+    _save_station(session, payload.user_id, payload.shift_date, payload.station_code, manager)
     return ShiftEntryRead.model_validate(entry)
 
 @router.get("/shifts/colleagues", response_model=list[ColleagueRead])
@@ -273,6 +327,13 @@ def get_colleagues(shift_date:str, shift_code:str, current_user=Depends(get_curr
 @router.get("/workstations/me", response_model=list[WorkStationEntryRead])
 def get_my_stations(current_user=Depends(get_current_user), session: Session=Depends(get_session)):
     return [WorkStationEntryRead.model_validate(i) for i in session.exec(select(WorkStationEntry).where(WorkStationEntry.user_id==current_user.id)).all()]
+
+@router.get("/workstations/user/{user_id}", response_model=list[WorkStationEntryRead])
+def get_user_stations(user_id: int, manager=Depends(require_manager), session: Session=Depends(get_session)):
+    target=session.exec(select(User).where(User.id==user_id)).first()
+    if not target: raise HTTPException(status_code=404)
+    if target.company_name!=manager.company_name or target.team_name!=manager.team_name: raise HTTPException(status_code=403)
+    return [WorkStationEntryRead.model_validate(i) for i in session.exec(select(WorkStationEntry).where(WorkStationEntry.user_id==user_id)).all()]
 
 # ── Imports ───────────────────────────────────────────────────────────────────
 @router.post("/imports/team", response_model=BulkImportResponse)
@@ -461,7 +522,7 @@ def list_users(admin=Depends(require_admin), session: Session=Depends(get_sessio
 @router.post("/admin/users", response_model=UserRead)
 def create_user(payload: RegisterRequest, admin=Depends(require_admin), session: Session=Depends(get_session)):
     if session.exec(select(User).where(User.email==payload.email)).first(): raise HTTPException(status_code=400, detail="Email già registrata")
-    if session.exec(select(User).where(User.employee_code==payload.employee_code)).first(): raise HTTPException(status_code=400, detail="Matricola già in uso")
+    if session.exec(select(User).where(User.employee_code==payload.employee_code, User.company_name==payload.company_name)).first(): raise HTTPException(status_code=400, detail="Matricola già in uso in questa azienda")
     user=User(full_name=payload.full_name, employee_code=payload.employee_code, company_name=payload.company_name, team_name=payload.team_name, email=payload.email, password_hash=get_password_hash(payload.password), role=payload.role or "user", must_change_password=True)
     session.add(user); session.commit(); session.refresh(user)
     send_temp_password(user.email, user.full_name, payload.password, settings.frontend_url)

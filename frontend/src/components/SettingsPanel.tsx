@@ -23,6 +23,8 @@ function ColorPicker({ value, onChange }: { value: string; onChange: (c: string)
   const [open, setOpen] = useState(false);
   const [hex, setHex] = useState(value);
   const ref = useRef<HTMLDivElement>(null);
+  const btnRef = useRef<HTMLButtonElement>(null);
+  const [popoverPos, setPopoverPos] = useState({ top: 0, left: 0 });
 
   useEffect(() => { setHex(value); }, [value]);
   useEffect(() => {
@@ -31,16 +33,24 @@ function ColorPicker({ value, onChange }: { value: string; onChange: (c: string)
     return () => document.removeEventListener("mousedown", handler);
   }, []);
 
+  function openPicker() {
+    if (btnRef.current) {
+      const rect = btnRef.current.getBoundingClientRect();
+      setPopoverPos({ top: rect.bottom + 6, left: Math.min(rect.left, window.innerWidth - 230) });
+    }
+    setOpen(v => !v);
+  }
+
   return (
     <div ref={ref} style={{ position: "relative", display: "inline-flex", alignItems: "center" }}>
-      <button type="button" onClick={() => setOpen(v => !v)}
+      <button ref={btnRef} type="button" onClick={openPicker}
         style={{ width: 34, height: 34, borderRadius: 8, background: value, border: "2px solid rgba(255,255,255,.25)", cursor: "pointer", flexShrink: 0 }}
         title="Scegli colore"/>
       {open && (
         <div style={{
-          position: "absolute", top: 40, left: 0, zIndex: 100,
+          position: "fixed", top: popoverPos.top, left: popoverPos.left, zIndex: 9999,
           background: "var(--bg-2)", border: "1px solid var(--border)",
-          borderRadius: 12, padding: 12, boxShadow: "0 8px 32px rgba(0,0,0,.4)",
+          borderRadius: 12, padding: 12, boxShadow: "0 8px 32px rgba(0,0,0,.6)",
           width: 220,
         }}>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(6, 1fr)", gap: 5, marginBottom: 10 }}>
@@ -160,17 +170,16 @@ export function SettingsPanel({ currentUser, onUserUpdate, onRefresh }: Props) {
         <div className="card card-pad">
           <div className="label" style={{marginBottom:4}}><UserIcon size={11} style={{display:"inline",marginRight:5}}/>Dati personali</div>
           <h2 className="heading" style={{fontSize:18,marginBottom:14}}>Profilo</h2>
-          <form onSubmit={saveProfile} style={{display:"flex",flexDirection:"column",gap:10}}>
-            {[{l:"Nome e cognome",k:"full_name"},{l:"Email",k:"email",t:"email"},{l:"Azienda",k:"company_name"},{l:"Team",k:"team_name"}].map(({l,k,t})=>(
-              <div key={k}>
+          {/* Dati personali: solo visualizzazione. Modificabili solo dall'admin. */}
+          <div style={{display:"flex",flexDirection:"column",gap:10}}>
+            {[{l:"Nome e cognome",v:currentUser.full_name},{l:"Email",v:currentUser.email},{l:"Azienda",v:currentUser.company_name||"—"},{l:"Team",v:currentUser.team_name||"—"},{l:"Matricola",v:currentUser.employee_code}].map(({l,v})=>(
+              <div key={l}>
                 <div className="label" style={{marginBottom:4}}>{l}</div>
-                <input className="input" type={t||"text"} value={(profile as Record<string,string>)[k]} onChange={e=>setProfile(pr=>({...pr,[k]:e.target.value}))}/>
+                <div style={{padding:"9px 12px",borderRadius:"var(--radius-sm)",background:"rgba(255,255,255,.04)",border:"1px solid var(--border)",fontSize:14,color:"var(--text-2)"}}>{v}</div>
               </div>
             ))}
-            <div><div className="label" style={{marginBottom:4}}>Matricola</div><input className="input" value={currentUser.employee_code} disabled style={{opacity:.5}}/></div>
-            {profileStatus && <div className={`msg ${profileStatus.ok?"msg-success":"msg-error"}`}>{profileStatus.ok?<CheckCircle2 size={13}/>:<AlertCircle size={13}/>}{profileStatus.msg}</div>}
-            <button className="btn btn-primary btn-sm" type="submit" disabled={profileSaving} style={{alignSelf:"flex-start"}}>{profileSaving?<span className="spinner spinner-sm"/>:<Save size={13}/>} Salva</button>
-          </form>
+            <div className="muted" style={{fontSize:11,marginTop:4}}>ℹ Per modificare i dati personali contatta l'amministratore.</div>
+          </div>
         </div>
 
         {/* Password */}

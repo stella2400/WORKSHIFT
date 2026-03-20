@@ -225,6 +225,7 @@ class ManualShiftEntry(BaseModel):
     time_start: Optional[str] = None
     time_end: Optional[str] = None
     notes: Optional[str] = None
+    station_code: Optional[str] = None
 
 
 # ── Uploads ───────────────────────────────────────────────────────────────────

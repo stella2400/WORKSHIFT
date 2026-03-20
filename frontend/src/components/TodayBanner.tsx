@@ -44,11 +44,17 @@ export function TodayBanner({ dashboard, userName }: Props) {
 
   return (
     <div className="card today-banner">
-      {/* Shift badge */}
-      <div className="today-shift-badge" style={{ background: `${color}22`, border: `2px solid ${color}55` }}>
-        <span style={{ color, fontFamily: "var(--font-display)" }}>
-          {todayShift ? todayShift.shift_code : "—"}
-        </span>
+      {/* Shift badge — width auto to fit code length */}
+      <div style={{
+        minWidth: 52, height: 52, borderRadius: 14, flexShrink: 0,
+        background: `${color}22`, border: `2px solid ${color}55`,
+        display: "flex", alignItems: "center", justifyContent: "center",
+        padding: "0 12px",
+        fontSize: todayShift && todayShift.shift_code.length > 3 ? 14 : 20,
+        fontWeight: 800, fontFamily: "var(--font-display)",
+        color, whiteSpace: "nowrap",
+      }}>
+        {todayShift ? todayShift.shift_code : "—"}
       </div>
 
       {/* Main info */}
