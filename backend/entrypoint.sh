@@ -2,7 +2,7 @@
 set -e
 
 echo "=== WorkShift Backend Starting ==="
-echo "DATABASE_URL: ${DATABASE_URL:-NOT SET}"
+echo "DATABASE_URL schema: $(echo ${DATABASE_URL:-NOT SET} | sed 's/:\/\/.*/\/\/***/')"
 echo "UPLOADS_DIR: ${UPLOADS_DIR:-/app/uploads}"
 
 # Create uploads dir
