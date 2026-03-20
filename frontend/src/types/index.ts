@@ -60,6 +60,8 @@ export type TeamMember = {
   id: number; full_name: string; employee_code: string;
   team_name?: string | null; company_name?: string | null; role: string;
 };
+// Alias for backward compatibility
+export type UserReadShort = TeamMember;
 export type TeamMemberShifts = { user: TeamMember; shifts: Shift[] };
 export type Company = { id: number; name: string; description?: string | null; created_at: string };
 export type Team = { id: number; name: string; description?: string | null; company_id: number; created_at: string };
