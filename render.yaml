@@ -1,0 +1,30 @@
+services:
+  - type: web
+    name: workshift-backend
+    env: docker
+    rootDir: backend
+    dockerfilePath: ./Dockerfile
+    envVars:
+      - key: DATABASE_URL
+        sync: false
+      - key: JWT_SECRET_KEY
+        generateValue: true
+      - key: CORS_ORIGINS
+        sync: false
+      - key: UPLOADS_DIR
+        value: /app/uploads
+
+  - type: static
+    name: workshift-frontend
+    rootDir: frontend
+    buildCommand: npm install && npm run build
+    publishPath: dist
+    envVars:
+      - key: VITE_API_BASE_URL
+        sync: false
+
+databases:
+  - name: workshift-db
+    databaseName: workshift
+    user: workshift
+    plan: free
