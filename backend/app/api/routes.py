@@ -213,13 +213,21 @@ def update_shift(shift_id:int, payload: ShiftEntryUpdate, current_user=Depends(g
     if not shift: raise HTTPException(status_code=404, detail="Turno non trovato")
     if shift.user_id!=current_user.id and current_user.role not in ("manager","admin"): raise HTTPException(status_code=403)
     shift.shift_code=payload.shift_code.upper(); shift.shift_label=payload.shift_label; shift.notes=payload.notes; shift.manually_edited=True
-    if payload.actual_time_start and payload.actual_time_end:
-        shift.actual_time_start=payload.actual_time_start; shift.actual_time_end=payload.actual_time_end
-        hw=hours_from_times(payload.actual_time_start, payload.actual_time_end)
-        if hw:
-            std=_std_hours(session, current_user); shift.hours_worked=hw; shift.overtime_hours=compute_overtime(hw, std)
-    elif payload.actual_time_start is None and payload.actual_time_end is None:
+    if payload.actual_time_start is None and payload.actual_time_end is None:
+        # Both explicitly None → clear actual times, revert to planned
         shift.actual_time_start=None; shift.actual_time_end=None
+        if shift.time_start and shift.time_end:
+            hw=hours_from_times(shift.time_start, shift.time_end)
+            if hw: std=_std_hours(session, current_user); shift.hours_worked=hw; shift.overtime_hours=compute_overtime(hw, std)
+    else:
+        # At least one side provided — use planned as fallback for missing side
+        eff_start = payload.actual_time_start or shift.time_start
+        eff_end   = payload.actual_time_end   or shift.time_end
+        if eff_start and eff_end:
+            shift.actual_time_start=eff_start; shift.actual_time_end=eff_end
+            hw=hours_from_times(eff_start, eff_end)
+            if hw:
+                std=_std_hours(session, current_user); shift.hours_worked=hw; shift.overtime_hours=compute_overtime(hw, std)
         if shift.time_start and shift.time_end:
             hw=hours_from_times(shift.time_start, shift.time_end)
             if hw: std=_std_hours(session, current_user); shift.hours_worked=hw; shift.overtime_hours=compute_overtime(hw, std)

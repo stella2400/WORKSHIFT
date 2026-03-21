@@ -59,11 +59,18 @@ export function EditableDayTable({ dashboard, onRefresh }: Props) {
     if (!e) return;
     setSaving(s.id);
     try {
+      // If user filled only one side, use planned time as fallback for the other
+      const hasStart = !!e.actual_time_start;
+      const hasEnd = !!e.actual_time_end;
+      const effectiveStart = hasStart ? e.actual_time_start
+                           : (hasEnd ? (s.time_start || null) : null);
+      const effectiveEnd   = hasEnd ? e.actual_time_end
+                           : (hasStart ? (s.time_end || null) : null);
       await api.patch(`/shifts/${s.id}`, {
         shift_code: e.shift_code, shift_label: e.shift_label,
         notes: e.notes || null,
-        actual_time_start: e.actual_time_start || null,
-        actual_time_end: e.actual_time_end || null,
+        actual_time_start: effectiveStart,
+        actual_time_end: effectiveEnd,
       });
       setEdits(p => { const n={...p}; delete n[s.id]; return n; });
       showFlash(s.id, true, "✓"); onRefresh();

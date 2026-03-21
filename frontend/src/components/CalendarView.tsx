@@ -125,6 +125,9 @@ export function CalendarView({ dashboard, sideDetail=false }: Props) {
                 <span style={{ fontSize: 7, color: stationColor(station), marginTop: 1, lineHeight: 1, fontWeight: 600 }}>{station.station_code}</span>
               )}
               {hasOt && <span style={{ position: "absolute", top: 2, right: 2, width: 4, height: 4, borderRadius: "50%", background: "var(--warning)" }}/>}
+              {shift?.actual_time_start && (
+                <span style={{ position: "absolute", bottom: 2, right: 3, fontSize: 7, lineHeight: 1, color: color, opacity: 0.75, pointerEvents: "none", userSelect: "none" }}>✎</span>
+              )}
             </div>
           );
         })}
@@ -177,18 +180,19 @@ export function CalendarView({ dashboard, sideDetail=false }: Props) {
         {sideDetail && <button className="btn btn-ghost btn-sm btn-icon" onClick={() => setSelected(null)}><X size={13}/></button>}
       </div>
 
-      {/* Shift info badges — all from config */}
+      {/* Shift info badges — se orario effettivo presente mostra solo quello, altrimenti pianificato */}
       <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 10 }}>
-        {selectedShift.time_start && (
+        {selectedShift.actual_time_start ? (
+          /* Orario effettivo modificato — badge colorato con colore turno */
+          <span style={{ fontSize: 10, padding: "3px 10px", borderRadius: 99, background: `${shiftColor(selectedShift.shift_code)}25`, color: shiftColor(selectedShift.shift_code), border: `1.5px solid ${shiftColor(selectedShift.shift_code)}60`, fontWeight: 600 }}>
+            🕐 {selectedShift.actual_time_start.slice(0,5)}–{selectedShift.actual_time_end?.slice(0,5)}
+          </span>
+        ) : selectedShift.time_start ? (
+          /* Orario pianificato — testo muted */
           <span className="muted" style={{ fontSize: 11 }}>
             🕐 {selectedShift.time_start.slice(0,5)}–{selectedShift.time_end?.slice(0,5)}
           </span>
-        )}
-        {selectedShift.actual_time_start && (
-          <span style={{ fontSize: 10, padding: "2px 8px", borderRadius: 99, background: "rgba(251,191,36,.15)", color: "var(--warning)", border: "1px solid rgba(251,191,36,.3)" }}>
-            ⏱ {selectedShift.actual_time_start.slice(0,5)}–{selectedShift.actual_time_end?.slice(0,5)}
-          </span>
-        )}
+        ) : null}
         {(selectedShift.hours_worked ?? 0) > 0 && (
           <span style={{ fontSize: 10, padding: "2px 8px", borderRadius: 99, background: `${shiftColor(selectedShift.shift_code)}20`, color: shiftColor(selectedShift.shift_code), border: `1px solid ${shiftColor(selectedShift.shift_code)}50` }}>
             {selectedShift.hours_worked}h
