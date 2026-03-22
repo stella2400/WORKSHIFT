@@ -176,7 +176,7 @@ export default function App() {
       {tab==="calendar" && dashboard && (
         <div className="grid-2 grid-2-asym">
           <CalendarView dashboard={dashboard} sideDetail={false} onMonthChange={(y,m)=>setSelectedMonth({year:y,month:m})}/>
-          <EditableDayTable dashboard={dashboard} onRefresh={loadDashboard}/>
+          <EditableDayTable dashboard={dashboard} onRefresh={loadDashboard} selectedMonth={selectedMonth}/>
         </div>
       )}
 

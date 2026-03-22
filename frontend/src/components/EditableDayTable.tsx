@@ -3,10 +3,10 @@ import { Save, RotateCcw, Clock } from "lucide-react";
 import { api, apiError } from "../api/client";
 import { DashboardResponse, Shift, buildShiftMap } from "../types";
 
-type Props = { dashboard: DashboardResponse; onRefresh: () => void };
+type Props = { dashboard: DashboardResponse; onRefresh: () => void; selectedMonth?: {year:number;month:number}|null; };
 type Edit = { shift_code:string; shift_label:string; notes:string; actual_time_start:string; actual_time_end:string };
 
-export function EditableDayTable({ dashboard, onRefresh }: Props) {
+export function EditableDayTable({ dashboard, onRefresh, selectedMonth }: Props) {
   const { shifts, definitions, team_config, stations, station_definitions } = dashboard;
   const [edits, setEdits] = useState<Record<number, Edit>>({});
   const [saving, setSaving] = useState<number|null>(null);
@@ -86,6 +86,11 @@ export function EditableDayTable({ dashboard, onRefresh }: Props) {
   }
 
   const filtered = shifts.filter(s => {
+    // Filter by selected month if set
+    if (selectedMonth) {
+      const prefix = `${selectedMonth.year}-${String(selectedMonth.month).padStart(2, "0")}`;
+      if (!s.shift_date.startsWith(prefix)) return false;
+    }
     if (!filter) return true;
     const f = filter.toLowerCase();
     return s.shift_code.toLowerCase().includes(f) || s.shift_label.toLowerCase().includes(f) || s.shift_date.includes(f);
