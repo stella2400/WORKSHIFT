@@ -133,9 +133,16 @@ export function TeamShiftsPanel({ currentUser, definitions, stationDefs, standar
     if (!selectedShift) return;
     if (!confirm(`Eliminare il turno del ${selectedShift.shift.shift_date} per ${selectedShift.userName}?`)) return;
     setDeleting(true);
+    const shiftId = selectedShift.shift.id;
     try {
-      await api.delete(`/shifts/${selectedShift.shift.id}`);
-      setSelectedShift(null); load();
+      await api.delete(`/shifts/${shiftId}`);
+      // Optimistic update: rimuovi subito dallo stato locale senza aspettare load()
+      setTeamShifts(prev => prev.map(member => ({
+        ...member,
+        shifts: member.shifts.filter(s => s.id !== shiftId),
+      })));
+      setSelectedShift(null);
+      if (onRefresh) onRefresh();  // ricarica dashboard in background
     } catch (err) { setModalFlash({ ok: false, msg: apiError(err) }); }
     finally { setDeleting(false); }
   }

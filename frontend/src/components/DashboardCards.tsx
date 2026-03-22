@@ -1,22 +1,24 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Settings2, Check } from "lucide-react";
 import { api } from "../api/client";
 import { DashboardResponse, User, buildShiftMap } from "../types";
 
 type CardOption = { label: string; shortLabel: string; code: string };
-type Props = { dashboard: DashboardResponse; currentUser: User; onUserUpdate: (u: User) => void };
+type Props = { dashboard: DashboardResponse; currentUser: User; onUserUpdate: (u: User) => void; selectedMonth?: {year:number;month:number}|null; };
 
-function getSummaryValue(dashboard: DashboardResponse, code: string): string {
-  const s = dashboard.summary;
+type Summary = {total_days:number;work_days:number;off_days:number;uploads_count:number;hours_worked:number;overtime_hours:number;by_code:Record<string,number>};
+
+function getSummaryValue(s: Summary | null | undefined, code: string): string {
+  if (!s) return "—";
   switch (code) {
-    case "total_days":    return String(s.total_days);
-    case "work_days":     return String(s.work_days);
-    case "off_days":      return String(s.off_days);
-    case "uploads_count": return String(s.uploads_count);
-    case "hours_worked":  return `${s.hours_worked}h`;
-    case "overtime_hours":return `${s.overtime_hours}h`;
+    case "total_days":    return String(s.total_days ?? 0);
+    case "work_days":     return String(s.work_days ?? 0);
+    case "off_days":      return String(s.off_days ?? 0);
+    case "uploads_count": return String(s.uploads_count ?? 0);
+    case "hours_worked":  return `${s.hours_worked ?? 0}h`;
+    case "overtime_hours":return `${s.overtime_hours ?? 0}h`;
     default:
-      return s.by_code[code] !== undefined ? String(s.by_code[code]) : "—";
+      return (s.by_code && s.by_code[code] !== undefined) ? String(s.by_code[code]) : "—";
   }
 }
 
@@ -31,8 +33,25 @@ const BASE_OPTIONS: CardOption[] = [
 
 const DEFAULT_CODES = ["total_days", "work_days", "off_days", "hours_worked"];
 
-export function DashboardCards({ dashboard, currentUser, onUserUpdate }: Props) {
+export function DashboardCards({ dashboard, currentUser, onUserUpdate, selectedMonth }: Props) {
   const shiftDefs = buildShiftMap(dashboard.definitions);
+
+  // Compute monthly summary when a month is selected
+  const filteredSummary = useMemo(() => {
+    if (!selectedMonth) return dashboard.summary;
+    const { year, month } = selectedMonth;
+    const pad = String(month).padStart(2, "0");
+    const prefix = `${year}-${pad}`;
+    const monthShifts = dashboard.shifts.filter(s => s.shift_date.startsWith(prefix));
+    const offCodes = new Set(dashboard.definitions.filter(d => d.category === "off").map(d => d.code));
+    const work_days = monthShifts.filter(s => !offCodes.has(s.shift_code)).length;
+    const off_days  = monthShifts.filter(s => offCodes.has(s.shift_code)).length;
+    const hours_worked   = Math.round(monthShifts.reduce((a, s) => a + (s.hours_worked || 0), 0) * 10) / 10;
+    const overtime_hours = Math.round(monthShifts.reduce((a, s) => a + (s.overtime_hours || 0), 0) * 10) / 10;
+    const by_code: Record<string,number> = {};
+    monthShifts.forEach(s => { by_code[s.shift_code] = (by_code[s.shift_code] || 0) + 1; });
+    return { total_days: monthShifts.length, work_days, off_days, uploads_count: dashboard.summary.uploads_count, hours_worked, overtime_hours, by_code };
+  }, [selectedMonth, dashboard.shifts, dashboard.definitions, dashboard.summary]);
 
   // All available options = base + one per configured shift code
   const allOptions: CardOption[] = [
@@ -90,7 +109,7 @@ export function DashboardCards({ dashboard, currentUser, onUserUpdate }: Props) 
       <div className="stats">
         {selectedCodes.map(code => {
           const color = cardColor(code);
-          const value = getSummaryValue(dashboard, code);
+          const value = getSummaryValue(filteredSummary, code);
           return (
             <div key={code} className="card" style={{
               padding: "20px 22px",
@@ -111,6 +130,15 @@ export function DashboardCards({ dashboard, currentUser, onUserUpdate }: Props) 
           );
         })}
       </div>
+
+      {/* Month label when filtering */}
+      {selectedMonth && (
+        <div className="muted" style={{ fontSize: 11, textAlign: "right", marginTop: 4 }}>
+          Dati per: <strong style={{ color: "var(--text)" }}>
+            {["Gennaio","Febbraio","Marzo","Aprile","Maggio","Giugno","Luglio","Agosto","Settembre","Ottobre","Novembre","Dicembre"][selectedMonth.month - 1]} {selectedMonth.year}
+          </strong>
+        </div>
+      )}
 
       {/* Config button */}
       <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 8 }}>

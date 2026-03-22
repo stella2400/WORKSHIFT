@@ -25,6 +25,7 @@ export default function App() {
   const [mgrSwapCount, setMgrSwapCount] = useState(0);
   const [teamMembers, setTeamMembers] = useState<UserReadShort[]>([]);
 
+  const [selectedMonth, setSelectedMonth] = useState<{year:number;month:number}|null>(null);
   const urlParams = new URLSearchParams(window.location.search);
   const resetToken = urlParams.get("token");
 
@@ -162,9 +163,9 @@ export default function App() {
       {tab==="dashboard" && dashboard && (
         <>
           <TodayBanner dashboard={dashboard} userName={user.full_name}/>
-          <DashboardCards dashboard={dashboard} currentUser={user}
+          <DashboardCards dashboard={dashboard} currentUser={user} selectedMonth={selectedMonth}
             onUserUpdate={u => { setUser(u); setDashboard(d => d ? {...d, user:u} : d); }}/>
-          <CalendarView dashboard={dashboard} sideDetail={true}/>
+          <CalendarView dashboard={dashboard} sideDetail={true} onMonthChange={(y,m)=>setSelectedMonth({year:y,month:m})}/>
         </>
       )}
       {tab==="dashboard" && !dashboard && (
@@ -174,7 +175,7 @@ export default function App() {
       {/* Calendar */}
       {tab==="calendar" && dashboard && (
         <div className="grid-2 grid-2-asym">
-          <CalendarView dashboard={dashboard} sideDetail={false}/>
+          <CalendarView dashboard={dashboard} sideDetail={false} onMonthChange={(y,m)=>setSelectedMonth({year:y,month:m})}/>
           <EditableDayTable dashboard={dashboard} onRefresh={loadDashboard}/>
         </div>
       )}

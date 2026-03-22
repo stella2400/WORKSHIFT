@@ -3,14 +3,14 @@ import { ChevronLeft, ChevronRight, X, Users } from "lucide-react";
 import { api } from "../api/client";
 import { ColleagueRead, DashboardResponse, Shift, WorkStationEntry, buildShiftMap } from "../types";
 
-type Props = { dashboard: DashboardResponse; sideDetail?: boolean };
+type Props = { dashboard: DashboardResponse; sideDetail?: boolean; onMonthChange?: (year: number, month: number) => void; };
 
 const WEEKDAYS = ["L","M","M","G","V","S","D"];
 const MONTHS_IT = ["Gennaio","Febbraio","Marzo","Aprile","Maggio","Giugno","Luglio","Agosto","Settembre","Ottobre","Novembre","Dicembre"];
 
 function firstWeekday(y: number, m: number) { return (new Date(y, m-1, 1).getDay() + 6) % 7; }
 
-export function CalendarView({ dashboard, sideDetail=false }: Props) {
+export function CalendarView({ dashboard, sideDetail=false, onMonthChange }: Props) {
   const { shifts, definitions, stations, station_definitions } = dashboard;
 
   // All lookups derived from configurations — no hardcoded values
@@ -31,21 +31,25 @@ export function CalendarView({ dashboard, sideDetail=false }: Props) {
     return m;
   }, [stations]);
 
-  // Available months from shift data
-  const months = useMemo(() => {
-    const s = new Set<string>();
-    shifts.forEach(sh => { const [y,m] = sh.shift_date.split("-"); s.add(`${y}-${m}`); });
-    const sorted = Array.from(s).sort();
-    if (!sorted.length) { const n = new Date(); return [`${n.getFullYear()}-${String(n.getMonth()+1).padStart(2,"0")}`]; }
-    return sorted;
-  }, [shifts]);
-
-  const [idx, setIdx] = useState(() => months.length - 1);
-  const cur = months[idx] ?? months[0];
-  const [year, month] = cur.split("-").map(Number);
+  // Always start at current month — navigation is completely free
+  const [year, setYear] = useState(() => new Date().getFullYear());
+  const [month, setMonth] = useState(() => new Date().getMonth() + 1);
   const daysInMonth = new Date(year, month, 0).getDate();
   const fw = firstWeekday(year, month);
   const today = new Date().toISOString().slice(0, 10);
+
+  function prevMonth() {
+    const newMonth = month === 1 ? 12 : month - 1;
+    const newYear  = month === 1 ? year - 1 : year;
+    setMonth(newMonth); setYear(newYear);
+    if (onMonthChange) onMonthChange(newYear, newMonth);
+  }
+  function nextMonth() {
+    const newMonth = month === 12 ? 1 : month + 1;
+    const newYear  = month === 12 ? year + 1 : year;
+    setMonth(newMonth); setYear(newYear);
+    if (onMonthChange) onMonthChange(newYear, newMonth);
+  }
   const [selected, setSelected] = useState<string | null>(null);
   const [colleagues, setColleagues] = useState<ColleagueRead[]>([]);
   const [colleaguesLoading, setColleaguesLoading] = useState(false);
@@ -81,8 +85,8 @@ export function CalendarView({ dashboard, sideDetail=false }: Props) {
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
           <h2 className="heading" style={{ fontSize: 16 }}>{MONTHS_IT[month-1]} {year}</h2>
           <div style={{ display: "flex", gap: 3 }}>
-            <button className="btn btn-ghost btn-sm btn-icon" style={{ padding: 4 }} onClick={() => setIdx(i => Math.max(0, i-1))} disabled={idx===0}><ChevronLeft size={13}/></button>
-            <button className="btn btn-ghost btn-sm btn-icon" style={{ padding: 4 }} onClick={() => setIdx(i => Math.min(months.length-1, i+1))} disabled={idx===months.length-1}><ChevronRight size={13}/></button>
+            <button className="btn btn-ghost btn-sm btn-icon" style={{ padding: 4 }} onClick={prevMonth}><ChevronLeft size={13}/></button>
+            <button className="btn btn-ghost btn-sm btn-icon" style={{ padding: 4 }} onClick={nextMonth}><ChevronRight size={13}/></button>
           </div>
         </div>
       </div>
