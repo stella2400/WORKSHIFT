@@ -227,10 +227,10 @@ def update_shift(shift_id:int, payload: ShiftEntryUpdate, current_user=Depends(g
             shift.actual_time_start=eff_start; shift.actual_time_end=eff_end
             hw=hours_from_times(eff_start, eff_end)
             if hw:
-                std=_std_hours(session, current_user); shift.hours_worked=hw; shift.overtime_hours=compute_overtime(hw, std)
-        if shift.time_start and shift.time_end:
-            hw=hours_from_times(shift.time_start, shift.time_end)
-            if hw: std=_std_hours(session, current_user); shift.hours_worked=hw; shift.overtime_hours=compute_overtime(hw, std)
+                std=_std_hours(session, current_user)
+                shift.hours_worked=hw
+                shift.overtime_hours=compute_overtime(hw, std)
+        # NOTE: do NOT recalculate from planned time here — effective overrides planned
     shift.updated_at=datetime.utcnow(); session.add(shift); session.commit(); session.refresh(shift)
     return ShiftEntryRead.model_validate(shift)
 
