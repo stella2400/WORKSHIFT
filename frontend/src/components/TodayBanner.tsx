@@ -11,7 +11,7 @@ const DAYS_IT = ["domenica","lunedì","martedì","mercoledì","giovedì","venerd
 export function TodayBanner({ dashboard, userName }: Props) {
   const { shifts, definitions, stations, station_definitions } = dashboard;
   const today = new Date();
-  const todayStr = today.toISOString().slice(0, 10);
+  const todayStr = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,"0")}-${String(today.getDate()).padStart(2,"0")}`;
 
   // All from config
   const shiftDefs = buildShiftMap(definitions);
@@ -19,7 +19,7 @@ export function TodayBanner({ dashboard, userName }: Props) {
 
   const todayShift = shifts.find(s => s.shift_date === todayStr);
   const tomorrow = new Date(today); tomorrow.setDate(today.getDate() + 1);
-  const tomorrowStr = tomorrow.toISOString().slice(0, 10);
+  const tomorrowStr = `${tomorrow.getFullYear()}-${String(tomorrow.getMonth()+1).padStart(2,"0")}-${String(tomorrow.getDate()).padStart(2,"0")}`;
   const tomorrowShift = shifts.find(s => s.shift_date === tomorrowStr);
 
   // Station for today
@@ -65,11 +65,27 @@ export function TodayBanner({ dashboard, userName }: Props) {
             <div className="display" style={{ fontSize: 28, color, lineHeight: 1.1 }}>
               {todayShift.shift_label}
             </div>
-            {todayDef?.time_start && (
-              <div className="muted" style={{ fontSize: 12, marginTop: 3 }}>
-                🕐 {todayDef.time_start.slice(0,5)}–{todayDef.time_end?.slice(0,5)}
-              </div>
-            )}
+            {/* Show effective time if modified, otherwise planned from config */}
+            {(() => {
+              // Priorità: orario effettivo > orario turno > orario definizione
+              const displayStart = todayShift?.actual_time_start || todayShift?.time_start || todayDef?.time_start;
+              const displayEnd   = todayShift?.actual_time_end   || todayShift?.time_end   || todayDef?.time_end;
+              const isActual     = !!(todayShift?.actual_time_start);
+              if (!displayStart) return null;
+              return (
+                <div style={{ fontSize: 12, marginTop: 3, display: "flex", alignItems: "center", gap: 6 }}>
+                  {isActual ? (
+                    <span style={{ padding: "2px 9px", borderRadius: 99, background: `${color}20`, color, border: `1px solid ${color}50`, fontWeight: 600, fontSize: 12 }}>
+                      🕐 {displayStart.slice(0,5)}–{displayEnd?.slice(0,5)}
+                    </span>
+                  ) : (
+                    <span className="muted">
+                      🕐 {displayStart.slice(0,5)}–{displayEnd?.slice(0,5)}
+                    </span>
+                  )}
+                </div>
+              );
+            })()}
             {/* Station — from config */}
             {todayStation && (
               <div style={{ marginTop: 6, display: "flex", alignItems: "center", gap: 6 }}>

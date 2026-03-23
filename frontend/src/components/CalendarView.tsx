@@ -36,7 +36,8 @@ export function CalendarView({ dashboard, sideDetail=false, onMonthChange }: Pro
   const [month, setMonth] = useState(() => new Date().getMonth() + 1);
   const daysInMonth = new Date(year, month, 0).getDate();
   const fw = firstWeekday(year, month);
-  const today = new Date().toISOString().slice(0, 10);
+  const _todayObj = new Date();
+  const today = `${_todayObj.getFullYear()}-${String(_todayObj.getMonth()+1).padStart(2,"0")}-${String(_todayObj.getDate()).padStart(2,"0")}`;
 
   function prevMonth() {
     const newMonth = month === 1 ? 12 : month - 1;
