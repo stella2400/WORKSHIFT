@@ -35,7 +35,25 @@ export function EditableDayTable({ dashboard, onRefresh, selectedMonth }: Props)
   function handleCodeChange(s: Shift, code: string) {
     const upper = code.toUpperCase();
     const def = shiftDefs[upper];
-    setEdits(p => ({ ...p, [s.id]: { ...getEdit(s), ...p[s.id], shift_code: upper, shift_label: def ? def.label : (p[s.id]?.shift_label ?? s.shift_label) } }));
+    const cur = p => p[s.id] || {};
+    setEdits(p => ({
+      ...p,
+      [s.id]: {
+        ...getEdit(s),
+        ...p[s.id],
+        shift_code: upper,
+        shift_label: def ? def.label : (p[s.id]?.shift_label ?? s.shift_label),
+        // Auto-fill effective times from new shift definition (only if category is work)
+        ...(def && def.category === "work" && def.time_start ? {
+          actual_time_start: def.time_start.slice(0, 5),
+          actual_time_end: def.time_end?.slice(0, 5) || "",
+        } : def && def.category !== "work" ? {
+          // Non-work shifts: clear effective times
+          actual_time_start: "",
+          actual_time_end: "",
+        } : {}),
+      },
+    }));
   }
   function setField(id: number, s: Shift, partial: Partial<Edit>) {
     setEdits(p => ({ ...p, [id]: { ...getEdit(s), ...p[id], ...partial } }));

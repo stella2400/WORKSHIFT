@@ -240,14 +240,19 @@ export function SettingsPanel({ currentUser, onUserUpdate, onRefresh }: Props) {
             <div key={item.id} style={{display:"grid",gridTemplateColumns:"68px 1fr 76px 76px 60px 44px 90px 34px",gap:6,alignItems:"center"}}>
               <input className="input" style={{padding:"4px 7px",fontWeight:700,textTransform:"uppercase",fontSize:12}} value={item.code} maxLength={6} disabled={!isManager} onChange={e=>updShift(i,{code:e.target.value.toUpperCase()})}/>
               <input className="input" style={{padding:"4px 7px",fontSize:12}} disabled={!isManager} value={item.label} onChange={e=>updShift(i,{label:e.target.value})}/>
-              <input className="input" style={{padding:"4px 7px",fontSize:12}} disabled={!isManager} value={item.time_start||""} onChange={e=>updShift(i,{time_start:e.target.value||null})} placeholder="08:00"/>
-              <input className="input" style={{padding:"4px 7px",fontSize:12}} disabled={!isManager} value={item.time_end||""} onChange={e=>updShift(i,{time_end:e.target.value||null})} placeholder="14:00"/>
-              <input className="input" type="number" step="0.5" min="0" max="24" style={{padding:"4px 5px",fontSize:12}} disabled={!isManager} value={item.default_hours??""} onChange={e=>updShift(i,{default_hours:e.target.value?Number(e.target.value):null})} placeholder="6"/>
+              <input className="input" style={{padding:"4px 7px",fontSize:12,opacity:item.category!=="work"?.4:1}} disabled={!isManager||item.category!=="work"} value={item.category==="work"?(item.time_start||""):""} onChange={e=>updShift(i,{time_start:e.target.value||null})} placeholder={item.category==="work"?"08:00":"—"}/>
+              <input className="input" style={{padding:"4px 7px",fontSize:12,opacity:item.category!=="work"?.4:1}} disabled={!isManager||item.category!=="work"} value={item.category==="work"?(item.time_end||""):""} onChange={e=>updShift(i,{time_end:e.target.value||null})} placeholder={item.category==="work"?"14:00":"—"}/>
+              <input className="input" type="number" step="0.5" min="0" max="24" style={{padding:"4px 5px",fontSize:12,opacity:item.category!=="work"?.4:1}} disabled={!isManager||item.category!=="work"} value={item.category==="work"?(item.default_hours??""):""}  onChange={e=>updShift(i,{default_hours:e.target.value?Number(e.target.value):null})} placeholder={item.category==="work"?"6":"—"}/>
               {isManager
                 ? <ColorPicker value={item.color} onChange={c => updShift(i, { color: c })}/>
                 : <div style={{width:34,height:34,borderRadius:8,background:item.color,border:"2px solid rgba(255,255,255,.2)"}}/>
               }
-              <select className="input" style={{padding:"4px 6px",fontSize:11}} disabled={!isManager} value={item.category} onChange={e=>updShift(i,{category:e.target.value})}>
+              <select className="input" style={{padding:"4px 6px",fontSize:11}} disabled={!isManager} value={item.category} onChange={e=>{
+                const cat=e.target.value;
+                updShift(i, cat!=="work"
+                  ? {category:cat, time_start:null, time_end:null, default_hours:null}
+                  : {category:cat});
+              }}>
                 <option value="work">Lavoro</option>
                 <option value="off">Riposo</option>
                 <option value="transition">Transizione</option>
