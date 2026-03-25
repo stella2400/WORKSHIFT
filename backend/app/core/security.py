@@ -1,28 +1,43 @@
 from datetime import datetime, timedelta, UTC
 from typing import Optional
-
+import re
+import bcrypt
 import jwt
-from passlib.context import CryptContext
 
 from app.core.config import get_settings
 
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 ALGORITHM = "HS256"
+
+PASSWORD_REGEX = re.compile(
+    r'^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=\[\]{};\':"\\|,.<>\/?]).{8,}$'
+)
+
+
+def validate_password(password: str) -> str:
+    """Returns error message if invalid, empty string if valid."""
+    if len(password) < 8:
+        return "La password deve essere di almeno 8 caratteri"
+    if not re.search(r'[A-Z]', password):
+        return "La password deve contenere almeno una lettera maiuscola"
+    if not re.search(r'\d', password):
+        return "La password deve contenere almeno un numero"
+    if not re.search(r'[!@#$%^&*()\-_=+\[\]{};:\'",.<>/?\\|`~]', password):
+        return "La password deve contenere almeno un carattere speciale (!@#$...)"
+    return ""
 
 
 def get_password_hash(password: str) -> str:
-    return pwd_context.hash(password)
+    return bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
 
 
-def verify_password(plain_password: str, hashed_password: str) -> bool:
-    return pwd_context.verify(plain_password, hashed_password)
+def verify_password(plain: str, hashed: str) -> bool:
+    return bcrypt.checkpw(plain.encode("utf-8"), hashed.encode("utf-8"))
 
 
 def create_access_token(subject: str) -> str:
     settings = get_settings()
     expire = datetime.now(UTC) + timedelta(minutes=settings.jwt_expire_minutes)
-    payload = {"sub": subject, "exp": expire}
-    return jwt.encode(payload, settings.jwt_secret_key, algorithm=ALGORITHM)
+    return jwt.encode({"sub": subject, "exp": expire}, settings.jwt_secret_key, algorithm=ALGORITHM)
 
 
 def decode_access_token(token: str) -> Optional[str]:

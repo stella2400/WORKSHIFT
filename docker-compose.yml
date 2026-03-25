@@ -2,22 +2,19 @@ name: workshift
 
 services:
   db:
-    image: postgres:16
+    image: postgres:16-alpine
     container_name: workshift-db
     restart: unless-stopped
-    env_file:
-      - .env
     environment:
-      POSTGRES_DB: ${POSTGRES_DB}
-      POSTGRES_USER: ${POSTGRES_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB:-workshift}
+      POSTGRES_USER: ${POSTGRES_USER:-workshift}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-workshift}
     ports:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./infra/schema.sql:/docker-entrypoint-initdb.d/schema.sql:ro
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-workshift} -d ${POSTGRES_DB:-workshift}"]
       interval: 5s
       timeout: 5s
       retries: 20
@@ -28,25 +25,29 @@ services:
       dockerfile: Dockerfile
     container_name: workshift-backend
     restart: unless-stopped
-    env_file:
-      - .env
     depends_on:
       db:
         condition: service_healthy
     environment:
-      DATABASE_URL: ${DATABASE_URL}
-      JWT_SECRET_KEY: ${JWT_SECRET_KEY}
-      JWT_EXPIRE_MINUTES: ${JWT_EXPIRE_MINUTES}
-      FRONTEND_URL: ${FRONTEND_URL}
-      CORS_ORIGINS: ${CORS_ORIGINS}
-      HF_TOKEN: ${HF_TOKEN}
-      HF_MODEL: ${HF_MODEL}
-      UPLOADS_DIR: ${UPLOADS_DIR}
+      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-workshift}:${POSTGRES_PASSWORD:-workshift}@db:5432/${POSTGRES_DB:-workshift}
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:-dev-secret-change-in-production}
+      JWT_EXPIRE_MINUTES: ${JWT_EXPIRE_MINUTES:-10080}
+      CORS_ORIGINS: http://localhost:5173,http://127.0.0.1:5173
+      UPLOADS_DIR: /app/uploads
+      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:5173}
+      REGISTRATION_OPEN: ${REGISTRATION_OPEN:-true}
+      ADMIN_REGISTRATION_TOKEN: ${ADMIN_REGISTRATION_TOKEN:-change-this-admin-token}
+      SMTP_HOST: ${SMTP_HOST:-smtp.gmail.com}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      SMTP_FROM: ${SMTP_FROM:-}
+      HF_TOKEN: ${HF_TOKEN:-}
+      HF_MODEL: ${HF_MODEL:-Qwen/Qwen2.5-VL-7B-Instruct}
     ports:
       - "8000:8000"
     volumes:
-      - ./backend:/app
-      - ./backend/uploads:/app/uploads
+      - uploads_data:/app/uploads
 
   frontend:
     build:
@@ -63,3 +64,4 @@ services:
 
 volumes:
   postgres_data:
+  uploads_data:

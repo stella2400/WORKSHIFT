@@ -8,13 +8,12 @@ services:
       - key: DATABASE_URL
         sync: false
       - key: JWT_SECRET_KEY
-        sync: false
-      - key: FRONTEND_URL
-        sync: false
+        generateValue: true
       - key: CORS_ORIGINS
         sync: false
       - key: UPLOADS_DIR
         value: /app/uploads
+
   - type: static
     name: workshift-frontend
     rootDir: frontend
@@ -23,3 +22,9 @@ services:
     envVars:
       - key: VITE_API_BASE_URL
         sync: false
+
+databases:
+  - name: workshift-db
+    databaseName: workshift
+    user: workshift
+    plan: free
